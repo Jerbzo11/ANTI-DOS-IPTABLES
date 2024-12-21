@@ -1,0 +1,127 @@
+______________________________________________________________________________________
+
+                              ---- ANTI-DDOS ATTACK ----
+______________________________________________________________________________________
+
+HOW TO DENY PACKETS/DDOS ATTACKER USING IPTABLES
+
+
+1. Identify the Attack Source
+
+    Use netstat, tcpdump, or iftop to identify suspicious IPs with unusual traffic patterns.
+   -sudo netstat -anp | grep :80
+   -sudo tcpdump -n -i eth0
+ Look for excessive requests from specific IPs.
+
+
+
+______________________________________________________________________________________
+
+2. Block a Specific IP Address
+    
+  To deny traffic from a specific IP (e.g., 192.168.1.100):
+   -sudo iptables -A INPUT -s 192.168.1.100 -j DROP
+   This rule drops all packets from the specified IP.
+
+
+
+______________________________________________________________________________________
+3.  Block a Range of IP Addresses
+
+   If the attack comes from a range of IPs:
+   -sudo iptables -A INPUT -s 192.168.1.0/24 -j DROP
+
+
+______________________________________________________________________________________
+4. Limit the Rate of Connections
+
+    To prevent abuse from IPs making too many requests in a short period:
+    -sudo iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW -m recent --set
+    -sudo iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 10 -j DROP
+  This allows a maximum of 10 new connections per minute per IP. Additional attempts are dropped.
+
+
+______________________________________________________________________________________
+5. Syn Flood Protection
+
+  Add rules to limit SYN packets, often used in DDoS attacks:
+  -sudo iptables -A INPUT -p tcp --syn -m limit --limit 1/s --limit-burst 3 -j ACCEPT
+  -sudo iptables -A INPUT -p tcp --syn -j DROP
+ This drops excessive SYN packets.
+
+
+______________________________________________________________________________________
+6. Drop Invalid Packets
+
+  Invalid packets are a common sign of malicious traffic:
+  -sudo iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
+
+
+______________________________________________________________________________________
+7. Limit Ping (ICMP) Requests
+
+  To prevent ICMP flooding:
+   -sudo iptables -A INPUT -p icmp --icmp-type echo-request -m limit --limit 1/s -j ACCEPT
+   -sudo iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
+
+______________________________________________________________________________________
+8. Block Port Scans
+
+  DDoS attackers might scan ports to find vulnerabilities:
+   -sudo iptables -N PORTSCAN
+   -sudo iptables -A PORTSCAN -p tcp --tcp-flags SYN,ACK,FIN,RST RST -m limit --limit 1/s --limit-burst 2 -j RETURN
+   -sudo iptables -A PORTSCAN -j DROP
+
+
+______________________________________________________________________________________
+9. Log and Monitor Dropped Packets
+
+  Log packets that are dropped for analysis:
+  -sudo iptables -A INPUT -m limit --limit 5/min -j LOG --log-prefix "DDoS Dropped: " --log-level 4
+  
+  Monitor logs using:
+  -sudo tail -f /var/log/syslog
+
+
+______________________________________________________________________________________
+10. Save the Rules
+  
+    After configuring, save the rules to make them persistent:
+   -sudo iptables-save > /etc/iptables/rules.v4
+
+
+______________________________________________________________________________________
+11. Restore IPTables Rules
+
+    To restore the saved rules:
+   -sudo iptables-restore < /etc/iptables/rules.v4
+
+
+______________________________________________________________________________________
+______________________________________________________________________________________
+
+Important Tips
+
+    Combine IPTables rules with other DDoS protection tools like Fail2Ban or Cloudflare.
+    Use a hardware firewall or content delivery network (CDN) for large-scale attacks.
+    Regularly monitor traffic to detect and respond to new attack vectors.
+
+By carefully applying these rules, you can significantly reduce the impact of DDoS attacks and secure your server.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
